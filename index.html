@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF Section Cropper</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap");
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0f0f0f;
+        --surface: #1a1a1a;
+        --border: #2e2e2e;
+        --accent: #e8ff47;
+        --accent-dim: #b8cc2a;
+        --text: #e8e8e8;
+        --muted: #666;
+        --danger: #ff5f5f;
+        --mono: "IBM Plex Mono", monospace;
+        --sans: "IBM Plex Sans", sans-serif;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ── Header ── */
+      header {
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      header .logo {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      header .sep {
+        color: var(--border);
+      }
+      header .subtitle {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      /* ── Main layout ── */
+      main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 0;
+      }
+
+      /* ── Sidebar ── */
+      aside {
+        border-right: 1px solid var(--border);
+        padding: 28px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        position: sticky;
+        top: 0;
+        height: calc(100vh - 65px);
+        overflow-y: auto;
+      }
+
+      .field-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      /* Drop zone */
+      #drop-zone {
+        border: 1.5px dashed var(--border);
+        border-radius: 6px;
+        padding: 28px 16px;
+        text-align: center;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          background 0.2s;
+        position: relative;
+      }
+      #drop-zone:hover,
+      #drop-zone.drag-over {
+        border-color: var(--accent);
+        background: rgba(232, 255, 71, 0.04);
+      }
+      #drop-zone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      #drop-zone .icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+        display: block;
+      }
+      #drop-zone .hint {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      #drop-zone .filename {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--accent);
+        margin-top: 8px;
+        word-break: break-all;
+      }
+
+      /* Inputs */
+      .input-row {
+        display: flex;
+        gap: 10px;
+      }
+      input[type="number"],
+      input[type="text"] {
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 13px;
+        padding: 9px 12px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      input:focus {
+        border-color: var(--accent);
+      }
+      .input-row input[type="number"] {
+        width: 90px;
+        flex-shrink: 0;
+      }
+
+      /* Button */
+      #run-btn {
+        width: 100%;
+        padding: 12px;
+        background: var(--accent);
+        color: #0f0f0f;
+        border: none;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          transform 0.1s;
+        text-transform: uppercase;
+      }
+      #run-btn:hover {
+        background: var(--accent-dim);
+      }
+      #run-btn:active {
+        transform: scale(0.98);
+      }
+      #run-btn:disabled {
+        background: var(--border);
+        color: var(--muted);
+        cursor: not-allowed;
+      }
+
+      /* Status */
+      #status {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        min-height: 18px;
+      }
+      #status.error {
+        color: var(--danger);
+      }
+      #status.ok {
+        color: var(--accent);
+      }
+
+      /* Progress bar */
+      #progress-wrap {
+        height: 2px;
+        background: var(--border);
+        border-radius: 2px;
+        overflow: hidden;
+        display: none;
+      }
+      #progress-bar {
+        height: 100%;
+        background: var(--accent);
+        width: 0%;
+        transition: width 0.3s;
+      }
+
+      /* ── Results area ── */
+      #results-area {
+        padding: 28px 32px;
+        overflow-y: auto;
+      }
+
+      .results-header {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .results-title {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .results-count {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent);
+      }
+
+      .sections-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .section-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        animation: fadeIn 0.3s ease both;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+      }
+      .card-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .card-index {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent);
+        background: rgba(232, 255, 71, 0.1);
+        padding: 2px 8px;
+        border-radius: 3px;
+      }
+      .card-title {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .card-page {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .download-btn {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        text-decoration: none;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        transition:
+          color 0.2s,
+          border-color 0.2s;
+      }
+      .download-btn:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .card-img {
+        display: block;
+        width: 100%;
+        background: #fff;
+      }
+
+      /* Empty state */
+      #empty-state {
+        height: 60vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: var(--muted);
+      }
+      #empty-state .big {
+        font-size: 48px;
+      }
+      #empty-state p {
+        font-size: 14px;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="logo">PDF Cropper</span>
+      <span class="sep">|</span>
+      <span class="subtitle">Section extractor → PNG</span>
+    </header>
+
+    <main>
+      <!-- Sidebar -->
+      <aside>
+        <div>
+          <div class="field-label">File PDF</div>
+          <div id="drop-zone">
+            <input type="file" id="pdf-input" accept=".pdf" />
+            <span class="icon">📄</span>
+            <div class="hint">Kéo thả hoặc click để chọn</div>
+            <div class="filename" id="filename-display"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="field-label">API Endpoint</div>
+          <input
+            type="text"
+            id="api-url"
+            value="http://localhost:8000/crop-sections"
+          />
+        </div>
+
+        <div>
+          <div class="field-label">Scale & Keywords</div>
+          <div class="input-row">
+            <input
+              type="number"
+              id="scale"
+              value="2.0"
+              min="0.5"
+              max="5"
+              step="0.5"
+              title="Scale"
+            />
+            <input
+              type="text"
+              id="keywords"
+              value="cau,bai,question,task,exercise"
+              title="Keywords"
+            />
+          </div>
+        </div>
+
+        <button id="run-btn" disabled>↑ Xử lý PDF</button>
+
+        <div id="progress-wrap"><div id="progress-bar"></div></div>
+        <div id="status">Chọn file PDF để bắt đầu</div>
+      </aside>
+
+      <!-- Results -->
+      <section id="results-area">
+        <div id="empty-state">
+          <span class="big">⬡</span>
+          <p>Kết quả sẽ hiển thị ở đây</p>
+        </div>
+        <div id="results-container" style="display: none">
+          <div class="results-header">
+            <span class="results-title">Sections tìm thấy</span>
+            <span class="results-count" id="results-count"></span>
+          </div>
+          <div class="sections-grid" id="sections-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const dropZone = document.getElementById("drop-zone");
+      const fileInput = document.getElementById("pdf-input");
+      const filenameEl = document.getElementById("filename-display");
+      const runBtn = document.getElementById("run-btn");
+      const statusEl = document.getElementById("status");
+      const progressWrap = document.getElementById("progress-wrap");
+      const progressBar = document.getElementById("progress-bar");
+      const emptyState = document.getElementById("empty-state");
+      const resultsCont = document.getElementById("results-container");
+      const grid = document.getElementById("sections-grid");
+      const countEl = document.getElementById("results-count");
+
+      let selectedFile = null;
+
+      // File selection
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files[0]) setFile(fileInput.files[0]);
+      });
+
+      // Drag & drop
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("drag-over");
+      });
+      dropZone.addEventListener("dragleave", () =>
+        dropZone.classList.remove("drag-over"),
+      );
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("drag-over");
+        const f = e.dataTransfer.files[0];
+        if (f && f.name.endsWith(".pdf")) setFile(f);
+        else setStatus("Chỉ chấp nhận file .pdf", "error");
+      });
+
+      function setFile(file) {
+        selectedFile = file;
+        filenameEl.textContent = file.name;
+        runBtn.disabled = false;
+        setStatus(
+          `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+        );
+      }
+
+      function setStatus(msg, type = "") {
+        statusEl.textContent = msg;
+        statusEl.className = type;
+      }
+
+      // Run
+      runBtn.addEventListener("click", async () => {
+        if (!selectedFile) return;
+
+        const apiUrl = document.getElementById("api-url").value.trim();
+        const scale = document.getElementById("scale").value;
+        const keywords = document.getElementById("keywords").value;
+
+        runBtn.disabled = true;
+        setStatus("Đang gửi request...", "");
+        progressWrap.style.display = "block";
+        progressBar.style.width = "20%";
+
+        const form = new FormData();
+        form.append("file", selectedFile);
+        form.append("scale", scale);
+        form.append("keywords", keywords);
+
+        try {
+          progressBar.style.width = "50%";
+          const res = await fetch(apiUrl, { method: "POST", body: form });
+          progressBar.style.width = "80%";
+
+          if (!res.ok) {
+            const err = await res
+              .json()
+              .catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || res.statusText);
+          }
+
+          const data = await res.json();
+          progressBar.style.width = "100%";
+          renderResults(data);
+          setStatus(`✓ Hoàn tất — ${data.total} section(s)`, "ok");
+        } catch (err) {
+          setStatus(`Lỗi: ${err.message}`, "error");
+          progressBar.style.width = "0%";
+        } finally {
+          runBtn.disabled = false;
+          setTimeout(() => {
+            progressWrap.style.display = "none";
+            progressBar.style.width = "0%";
+          }, 800);
+        }
+      });
+
+      function renderResults(data) {
+        grid.innerHTML = "";
+        emptyState.style.display = "none";
+        resultsCont.style.display = "block";
+        countEl.textContent = `${data.total} items`;
+
+        data.sections.forEach((sec, i) => {
+          const card = document.createElement("div");
+          card.className = "section-card";
+          card.style.animationDelay = `${i * 60}ms`;
+
+          const imgSrc = `data:image/png;base64,${sec.image_base64}`;
+
+          card.innerHTML = `
+        <div class="card-header">
+          <div class="card-meta">
+            <span class="card-index">#${String(sec.index).padStart(2, "0")}</span>
+            <span class="card-title">${escHtml(sec.title)}</span>
+            <span class="card-page">trang ${sec.page}</span>
+          </div>
+          <a class="download-btn" href="${imgSrc}" download="section_${String(sec.index).padStart(3, "0")}.png">↓ PNG</a>
+        </div>
+        <img class="card-img" src="${imgSrc}" alt="Section ${sec.index}" loading="lazy">
+      `;
+
+          grid.appendChild(card);
+        });
+      }
+
+      function escHtml(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+    </script>
+  </body>
+</html>
