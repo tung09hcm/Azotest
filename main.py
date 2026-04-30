@@ -167,6 +167,9 @@ def render_section(
 # ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
+@app.get("/")
+def read_index():
+    return FileResponse("index.html")
 @app.post("/crop-sections")
 async def crop_sections(
     file: UploadFile = File(..., description="File PDF cần xử lý"),
