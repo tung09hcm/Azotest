@@ -169,9 +169,11 @@ def render_section(
 # Endpoint
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 @app.get("/")
 def read_index():
     return FileResponse(os.path.join(BASE_DIR, "index.html"))
+
 @app.post("/crop-sections")
 async def crop_sections(
     file: UploadFile = File(..., description="File PDF cần xử lý"),

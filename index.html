@@ -369,15 +369,6 @@
         </div>
 
         <div>
-          <div class="field-label">API Endpoint</div>
-          <input
-            type="text"
-            id="api-url"
-            value="http://localhost:8000/crop-sections"
-          />
-        </div>
-
-        <div>
           <div class="field-label">Scale & Keywords</div>
           <div class="input-row">
             <input
@@ -474,7 +465,7 @@
       runBtn.addEventListener("click", async () => {
         if (!selectedFile) return;
 
-        const apiUrl = document.getElementById("api-url").value.trim();
+        const apiUrl = window.location.origin + "/crop-sections";
         const scale = document.getElementById("scale").value;
         const keywords = document.getElementById("keywords").value;
 
