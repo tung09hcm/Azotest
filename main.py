@@ -15,7 +15,7 @@ Gọi API:
     Content-Type: multipart/form-data
     Body: file=<pdf_file>, scale=2.0, keywords=cau,bai,question
 """
-
+import os
 import base64
 import io
 import unicodedata
@@ -25,6 +25,7 @@ import fitz  # PyMuPDF
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
 from PIL import Image
 
 app = FastAPI(title="PDF Section Cropper")
@@ -167,9 +168,10 @@ def render_section(
 # ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 @app.get("/")
 def read_index():
-    return FileResponse("index.html")
+    return FileResponse(os.path.join(BASE_DIR, "index.html"))
 @app.post("/crop-sections")
 async def crop_sections(
     file: UploadFile = File(..., description="File PDF cần xử lý"),
